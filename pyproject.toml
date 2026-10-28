@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easymorph-dset"
+version = "1.0.0"
+description = "Reader for EasyMorph dataset files (.dset) and a .dset to .csv converter"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.22",
+    "polars>=2.0",
+]
+
+[project.scripts]
+dset-to-csv = "dset_to_csv.program:main"
+csv-to-dset = "csv_to_dset.program:main"
+
+[tool.setuptools.packages.find]
+include = ["easymorph*", "dset_to_csv*", "csv_to_dset*"]
