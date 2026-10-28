@@ -7,46 +7,11 @@ import numpy as np
 import polars as pl
 
 from easymorph.data import CellType, Dataset, EncodedColumn, Nothing, make_vocabulary
-from easymorph.data.vocabulary import VOCABULARY_SCHEMA, fits_net_decimal, from_vocabulary_value, number_parts
+from easymorph.data.vocabulary import from_vocabulary_value, infer_vocabulary
 from easymorph.drivers import CancellationToken
 
-# Plain decimal numbers as written by dset_to_csv. Exponents, a leading '+' and
-# leading zeros (e.g. zip codes like 007) are not treated as numbers.
-_NUMBER_PATTERN = r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$"
 # Bytes read at a time when scanning the end of the input for blank lines.
 _TAIL_BYTES = 4096
-
-
-def _infer_vocabulary(texts: pl.Series) -> pl.DataFrame:
-    """Converts CSV texts to a vocabulary: empty values become Nothing, TRUE/FALSE (any case)
-    become Boolean, plain decimal numbers that fit a .NET decimal become Number, the rest Text."""
-    text = pl.col("text")
-    upper = text.str.to_uppercase()
-    _, scale, digits = number_parts(text)
-    is_number = text.str.contains(_NUMBER_PATTERN) & fits_net_decimal(scale, digits)
-    # Negative zero ("-0.00") is stored as zero.
-    number = pl.when(digits == "").then(text.str.strip_prefix("-")).otherwise(text)
-
-    return (
-        pl.DataFrame({"text": texts})
-        .select(
-            type=pl.when(text == "")
-            .then(CellType.NOTHING)
-            .when(upper.is_in(["TRUE", "FALSE"]))
-            .then(CellType.BOOLEAN)
-            .when(is_number)
-            .then(CellType.NUMBER)
-            .otherwise(CellType.TEXT),
-            value=pl.when(text == "")
-            .then(None)
-            .when(upper.is_in(["TRUE", "FALSE"]))
-            .then(upper)
-            .when(is_number)
-            .then(number)
-            .otherwise(text),
-        )
-        .cast(VOCABULARY_SCHEMA)
-    )
 
 
 def _trailing_blank_lines(stream: BinaryIO) -> int:
@@ -69,7 +34,7 @@ def _trailing_blank_lines(stream: BinaryIO) -> int:
 
 def infer_value(text: str) -> Any:
     """Converts CSV text to a typed cell value: Nothing, bool, Decimal or str."""
-    vocabulary = _infer_vocabulary(pl.Series([text], dtype=pl.String))
+    vocabulary = infer_vocabulary(pl.Series([text], dtype=pl.String))
     cell_type, value = from_vocabulary_value(*vocabulary.row(0))
     return Nothing.INSTANCE if cell_type == CellType.NOTHING else value
 
@@ -165,7 +130,7 @@ def _read(
             uniques, pl.int_range(0, len(uniques), eager=True), return_dtype=pl.UInt32
         ).to_numpy()
         if infer_types:
-            vocabulary = _infer_vocabulary(uniques)
+            vocabulary = infer_vocabulary(uniques)
         else:
             vocabulary = make_vocabulary(pl.repeat(CellType.TEXT, len(uniques), eager=True), uniques)
 

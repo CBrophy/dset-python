@@ -74,3 +74,40 @@ def fits_net_decimal(scale: pl.Expr, digits: pl.Expr) -> pl.Expr:
         (length < len(MAX_DECIMAL_MANTISSA))
         | ((length == len(MAX_DECIMAL_MANTISSA)) & (digits <= MAX_DECIMAL_MANTISSA))
     )
+
+
+# Plain decimal numbers as written by dset_to_csv and dset_to_parquet. Exponents, a leading '+'
+# and leading zeros (e.g. zip codes like 007) are not treated as numbers.
+_NUMBER_PATTERN = r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$"
+
+
+def infer_vocabulary(texts: pl.Series) -> pl.DataFrame:
+    """Converts texts to a vocabulary: empty values become Nothing, TRUE/FALSE (any case)
+    become Boolean, plain decimal numbers that fit a .NET decimal become Number, the rest Text."""
+    text = pl.col("text")
+    upper = text.str.to_uppercase()
+    _, scale, digits = number_parts(text)
+    is_number = text.str.contains(_NUMBER_PATTERN) & fits_net_decimal(scale, digits)
+    # Negative zero ("-0.00") is stored as zero.
+    number = pl.when(digits == "").then(text.str.strip_prefix("-")).otherwise(text)
+
+    return (
+        pl.DataFrame({"text": texts})
+        .select(
+            type=pl.when(text == "")
+            .then(CellType.NOTHING)
+            .when(upper.is_in(["TRUE", "FALSE"]))
+            .then(CellType.BOOLEAN)
+            .when(is_number)
+            .then(CellType.NUMBER)
+            .otherwise(CellType.TEXT),
+            value=pl.when(text == "")
+            .then(None)
+            .when(upper.is_in(["TRUE", "FALSE"]))
+            .then(upper)
+            .when(is_number)
+            .then(number)
+            .otherwise(text),
+        )
+        .cast(VOCABULARY_SCHEMA)
+    )

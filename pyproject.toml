@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "easymorph-dset"
 version = "1.0.0"
-description = "Reader for EasyMorph dataset files (.dset) and a .dset to .csv converter"
+description = "Reader for EasyMorph dataset files (.dset) and converters between .dset and .csv or Parquet"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
@@ -17,6 +17,8 @@ dependencies = [
 [project.scripts]
 dset-to-csv = "dset_to_csv.program:main"
 csv-to-dset = "csv_to_dset.program:main"
+dset-to-parquet = "dset_to_parquet.program:main"
+parquet-to-dset = "parquet_to_dset.program:main"
 
 [tool.setuptools.packages.find]
-include = ["easymorph*", "dset_to_csv*", "csv_to_dset*"]
+include = ["easymorph*", "dset_to_csv*", "csv_to_dset*", "dset_to_parquet*", "parquet_to_dset*"]
