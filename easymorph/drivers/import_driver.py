@@ -18,6 +18,7 @@ CONSTANT_COLUMN_TYPE_NAME = "Column.Constant"
 FIELD_ITEM_TYPE = "EasyMorph.CompressedField.0"
 TABLE_METADATA_ITEM_TYPE = "EasyMorph.TableMetadata.0"
 COLUMNS_METADATA_ITEM_TYPE = "EasyMorph.ColumnsMetadata.0"
+FILE_METADATA_ITEM_TYPE = "EasyMorph.FileMetadata.0"
 
 
 class _BinaryReader:
@@ -108,7 +109,7 @@ class ImportDriver:
                 if item_type == FIELD_ITEM_TYPE:
                     columns.append(self._read_column(block_metadata, br, config.token))
                 # Metadata items are ignored
-                elif item_type not in (TABLE_METADATA_ITEM_TYPE, COLUMNS_METADATA_ITEM_TYPE):
+                elif item_type not in (TABLE_METADATA_ITEM_TYPE, COLUMNS_METADATA_ITEM_TYPE, FILE_METADATA_ITEM_TYPE):
                     raise DsetFormatError(f"Unsupported item type: {item_type}")
 
                 # Seek to end of block
